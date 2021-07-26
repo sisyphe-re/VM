@@ -9,7 +9,7 @@
         let
           lib = nixpkgs.lib;
           name = "sisyphe-x86_64";
-          systemConfiguration =  ./configuration.nix;
+          systemConfiguration = ./configuration.nix;
           standalone = {
             config = {
               fileSystems."/" = {
@@ -26,7 +26,24 @@
                 };
                 initrd = {
                   network.enable = false;
-                  availableKernelModules = [ "virtio_net" "virtio_pci" "virtio_mmio" "virtio_blk" "virtio_scsi" "kvm-amd" "kvm-intel" "xhci_pci" "ehci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" ];
+                  availableKernelModules = [
+                    "virtio_net"
+                    "virtio_pci"
+                    "virtio_mmio"
+                    "virtio_blk"
+                    "virtio_scsi"
+                    "kvm-amd"
+                    "kvm-intel"
+                    "xhci_pci"
+                    "ehci_pci"
+                    "ahci"
+                    "usbhid"
+                    "usb_storage"
+                    "sd_mod"
+                    "9p"
+                    "9pnet"
+                    "9pnet_virtio"
+                  ];
                 };
               };
               services = {

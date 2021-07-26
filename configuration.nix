@@ -40,6 +40,9 @@ let
     #! ${pkgs.nix}/bin/nix-shell
     #! nix-shell -i bash -p git nix gnutar openssh cachix coreutils
 
+    #${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: value: "export " + name + "=" + value +"\n") customEnvironment)}
+    #source /etc/sisyphe_secrets;
+
     export HOME=$(eval echo ~''$USER);
     cd ~/;
 
@@ -94,45 +97,49 @@ in
   systemd = {
     services."campaign" = {
       enable = true;
+      after = [
+        "network.target"
+        "nix-daemon.service"
+        "srv.mount"
+      ];
       wantedBy = [ "multi-user.target" ];
       environment = customEnvironment;
       serviceConfig = {
         EnvironmentFile = "/etc/sisyphe_secrets";
+        StandardOutput = "file:${sshPath}/campaign.stdout.txt";
+        StandardError = "file:${sshPath}/campaign.stderr.txt";
       };
       script = ''
         ${runCampaign}/bin/runCampaign
       '';
     };
     services."campaign-finalize" = {
+      enable = true;
+      after = [
+        "systemd-networkd-wait-online.service"
+        "network.target"
+        "network-online.target"
+        "nss-lookup.target"
+        "nix-daemon.service"
+        "srv.mount"
+      ];
+      wantedBy = [ "multi-user.target" ];
       environment = customEnvironment;
       serviceConfig = {
+        TimeoutStopSec = "infinity";
+        Type = "oneshot";
+        RemainAfterExit = true;
         EnvironmentFile = "/etc/sisyphe_secrets";
+        StandardOutput = "file:${sshPath}/campaign-finalize.stdout.txt";
+        StandardError = "file:${sshPath}/campaign-finalize.stderr.txt";
+        ExecStop = "${finalizeCampaign}/bin/finalizeCampaign";
       };
-      script = ''
-        ${finalizeCampaign}/bin/finalizeCampaign
-      '';
     };
-
   };
 
   fileSystems."${sshPath}" = {
-    device = "//10.0.2.4/qemu";
-    fsType = "cifs";
-    options =
-      let
-        # this line prevents hanging on network split
-        automount_opts = "x-systemd.automount,noauto,x-systemd.idle-timeout=60,x-systemd.device-timeout=30s,x-systemd.mount-timeout=30s,vers=3.0";
-
-      in
-      [ "${automount_opts},credentials=/etc/smb_secrets" ];
-  };
-  environment.etc = {
-    smb_secrets = {
-      text = ''
-        username=root
-        domain=localhost
-        password=foobar
-      '';
-    };
+    device = "srv";
+    fsType = "9p";
+    options = [ "trans=virtio" ];
   };
 }
