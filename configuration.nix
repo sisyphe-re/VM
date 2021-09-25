@@ -1,4 +1,4 @@
-{ pkgs, lib, config, ... }:
+{ pkgs, lib, config, rgrunbla-pkgs, ... }:
 let
   sshPath = "/srv";
   customEnvironment = {
@@ -11,17 +11,36 @@ let
   # Additional Environment Variables
   runCampaign = pkgs.writeScriptBin "runCampaign" ''
     #! ${pkgs.nix}/bin/nix-shell
-    #! nix-shell -i bash -p git nix gnutar openssh cachix coreutils curl
+    #! nix-shell -i bash -p git nix gnutar openssh cachix coreutils curl jq
 
     export HOME=$(eval echo ~''$USER);
     cd ~/;
 
-    echo "Saving the repository to SWH";
+    echo "Requesting the archival of the campaign repository to SWH";
     curl -X POST "https://archive.softwareheritage.org/api/1/origin/save/git/url/''${REPOSITORY}";
 
     echo "Cloning the campaign repository…";
-    git clone ''${REPOSITORY};
-    cd $(basename ''${REPOSITORY} .git);
+    export REPO_SHORT=$(basename ''${REPOSITORY} .git);
+    echo "Repository short name is ''${REPO_SHORT}";
+    echo "Repository URL is ''${REPOSITORY}";
+    git clone --mirror ''${REPOSITORY};
+    git clone ''${REPO_SHORT}.git ''${REPO_SHORT};
+    echo "Identifying the SWH ID of the campaign repository";
+    export SWHID=$(${rgrunbla-pkgs.swh-model}/bin/swh-identify --type snapshot ./''${REPO_SHORT}.git | sed "s/^\(.*\)\t.*/\1/g")
+    echo "The SWHID is ''${SWHID}"
+    cd ''${REPO_SHORT};
+
+    echo "Waiting for the campaign repository to be actually archived in SWH";
+    while true;
+    do
+        curl -X GET "https://archive.softwareheritage.org/api/1/resolve/''${SWHID}/" > resolve.json
+        if [ "$( jq 'has("object_id")' resolve.json )" == "true" ];
+        then
+            break;
+        else
+            sleep 10;
+        fi;
+    done
 
     echo "Building the campaign…";
     nix build -v

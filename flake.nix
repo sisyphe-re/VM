@@ -1,10 +1,10 @@
 {
   description = "Base Image for Sisyphe";
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-21.05";
-  outputs = { self, nixpkgs }:
+  inputs.rgrunbla-pkgs.url = "github:rgrunbla/Flakes";
+  outputs = { self, nixpkgs, rgrunbla-pkgs }:
     with import nixpkgs { system = "x86_64-linux"; };
     {
-
       packages.x86_64-linux.iso =
         let
           lib = nixpkgs.lib;
@@ -61,11 +61,13 @@
           evaluated = import "${nixpkgs}/nixos/lib/eval-config.nix" {
             system = pkgs.system;
             modules = [ systemConfiguration ] ++ [ standalone ];
-            inherit pkgs;
+            pkgs = pkgs;
+            extraArgs = { rgrunbla-pkgs = rgrunbla-pkgs.packages.x86_64-linux; };
           };
         in
         import "${nixpkgs}/nixos/lib/make-disk-image.nix" {
-          inherit lib name pkgs;
+          inherit lib name;
+          pkgs = pkgs;
           config = evaluated.config;
           contents = [ ];
           diskSize = 8192;
