@@ -43,14 +43,14 @@ let
     done
 
     echo "Building the campaign…";
-    nix build -v
+    ${pkgs.nixUnstable}/bin/nix --extra-experimental-features flakes --extra-experimental-features nix-command build -v
 
     echo "Listing the build artifacts";
     nix-store -qR ./result &> ''${ARTIFACTS_DIRECTORY}/build_artifacts.txt;
 
     echo "Copying the build artifacts to the binary cache";
     mkdir -p ''${ARTIFACTS_DIRECTORY}/store/
-    ${pkgs.nixUnstable}/bin/nix  --experimental-features nix-command copy --to file:''${ARTIFACTS_DIRECTORY}/store/ ./result
+    ${pkgs.nixUnstable}/bin/nix --extra-experimental-features flakes --extra-experimental-features nix-command copy --to file:''${ARTIFACTS_DIRECTORY}/store/ ./result
 
     echo "Running the campaign"
     ./result/run &> ''${ARTIFACTS_DIRECTORY}/campaign_run.txt;
@@ -79,7 +79,7 @@ in
     pkgs.graphviz
     pkgs.curl
     (pkgs.writeShellScriptBin "nixFlakes" ''
-      exec ${pkgs.nixUnstable}/bin/nix --experimental-features "nix-command flakes" "$@"
+      exec ${pkgs.nixUnstable}/bin/nix --experimental-features "nix-command copy" "$@"
     '')
   ];
 

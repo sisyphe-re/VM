@@ -70,7 +70,7 @@
           pkgs = pkgs;
           config = evaluated.config;
           contents = [ ];
-          diskSize = 8192;
+          diskSize = 16384;
           format = "qcow2";
         };
       defaultPackage.x86_64-linux = self.packages.x86_64-linux.iso;
